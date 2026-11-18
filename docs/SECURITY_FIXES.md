@@ -17,7 +17,7 @@ Baseline reviewed: 5b78198b2578997412853ab0858b10670fa74984.
 
 ## Validation
 
-- Typecheck, unit/regression tests, build and offline fixture evaluation.
+- Typecheck, 45 unit/regression tests, build and offline fixture evaluation.
 - Regression tests cover private/mixed DNS results, literal IP variants, redirects, stripped cross-origin headers, stream cancellation, UTF-8 byte limits, unknown SEO, false structural certainty and report process boundaries.
 - Local HTTP smoke checks verify assets, CSP, foreign Host rejection, cross-origin settings rejection and refusal to launch the unsafe Codex writer.
 - MCP initialization, tool enumeration and playbook retrieval are checked over stdio.
@@ -26,7 +26,8 @@ Baseline reviewed: 5b78198b2578997412853ab0858b10670fa74984.
 ## Explicit remaining limits
 
 - Full dependency audit still reports picomatch GHSA-fc5q-39xc-vjpf and its development-only dependents. The registry exposed no newer picomatch version than 4.0.7 during this change. Do not force a major downgrade or suppress the advisory. Build/test only trusted repository patterns and prune development dependencies for production.
-- The execution environment used for this review returned EAI_AGAIN on a direct public example.com DNS lookup. No live external website/paid-source completion is claimed. Do not bypass the DNS guard to work around this; use a host with direct public DNS/HTTPS or separately review its egress design.
+- Direct DNS in this execution environment fails. This is now handled by explicit `REM_NETWORK_MODE=pinned-proxy` using the inherited managed HTTP(S) proxy. DNS-over-HTTPS answers are validated, CONNECT is pinned to a checked public IP, and original TLS identity verification is retained. The test proxy confirms the actual CONNECT authority and Host contain the checked IP. Fresh CLI and MCP website/SEO scans of example.com succeeded on 2026-11-18 with six evidence items each and no paid API calls; MCP get_evidence also retrieved the saved run; unavailable sitemap coverage remained Unknown. This proves these paths in this environment, not every source or site.
+- Proxy mode requires access to Google DNS-over-HTTPS and permitted IP tunnels. There is no fallback that omits address validation. Configure `REM_NETWORK_MODE` in the calling agent environment as well as the terminal; setup does not persist proxy credentials.
 - Scrape Creators and Anthropic credentials were absent. Paid-source and live model/harness evaluations remain unverified. The offline fixture is a historical recorded report, not a fresh model output.
 - A temporary execution workspace is not a permanent agent host. Local stdio registration does not add a hosted connector to ChatGPT automatically.
 - A validator cannot prove factual truth. Each final factual claim still needs claim-to-evidence review.

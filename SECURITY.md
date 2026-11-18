@@ -8,7 +8,7 @@ REM reads public marketing evidence. Never expose the local web server to other 
 - Socket DNS lookup validates every returned address and passes the vetted addresses directly to the connection. Mixed private/public DNS records are rejected. No second unvalidated resolution is used.
 - Every redirect passes the same policy. Cross-origin redirects discard caller headers. Authenticated Scrape Creators requests reject redirects entirely.
 - Text and JSON bodies are bounded during stream consumption, after decompression. Excess bodies are cancelled rather than silently truncated. Timeouts remain active during body consumption.
-- The client does not inherit proxy settings: proxies that resolve targets independently would invalidate the connection policy. Hosts requiring a proxy need a separately reviewed egress design.
+- Default direct mode ignores proxy variables. Explicit `REM_NETWORK_MODE=pinned-proxy` uses the host-configured HTTP(S) `HTTPS_PROXY` (or `https_proxy`). A separate transport queries only `https://dns.google/resolve`, with redirects rejected, a 10-second deadline and a 64 KiB decoded-body limit. All A/AAAA answers must be public. Source CONNECT authority and Host are rewritten to a vetted IP; the original target hostname remains the HTTP origin and TLS SNI/certificate identity. This prevents a second target DNS lookup at the proxy. Proxy and DNS service are trusted infrastructure; hostnames are disclosed to Google DNS. Respect host egress policy and do not override its proxy or CA configuration. Unsupported tunnels, DNS errors and disallowed destinations fail closed; there is no unpinned fallback.
 
 ## Keys and report writers
 

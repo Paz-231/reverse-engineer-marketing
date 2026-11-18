@@ -38,7 +38,7 @@ node dist/cli.js setup --dry-run
 node dist/cli.js setup --yes
 ```
 
-Keep this checkout in a permanent location on your agent host. A temporary ChatGPT execution workspace is not a permanent host. MCP via stdio is a local client integration, not a hosted ChatGPT connector. Direct outbound DNS/HTTPS must work; REM deliberately does not bypass its DNS policy through inherited proxy variables.
+Keep this checkout in a permanent location on your agent host. A temporary ChatGPT execution workspace is not a permanent host. MCP via stdio is a local client integration, not a hosted ChatGPT connector. Direct outbound DNS/HTTPS is the default. On a managed HTTP(S) proxy host, explicitly set `REM_NETWORK_MODE=pinned-proxy` and inherit the host-provided `HTTPS_PROXY`. This mode resolves via Google DNS-over-HTTPS, checks every returned address and pins CONNECT to a public IP while retaining the original TLS identity. It requires the host policy to allow that DNS service and destination. See SECURITY.md; failures remain Unknown.
 
 The build/test toolchain currently has a known picomatch ReDoS advisory. It is absent after pruning development dependencies. Do not run the test toolchain on attacker-supplied glob patterns. Production dependency audit is checked separately. See docs/SECURITY_FIXES.md for validation and remaining limitations.
 

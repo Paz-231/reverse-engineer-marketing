@@ -6,6 +6,9 @@ import { Agent, fetch as remoteFetch, type Response } from "undici";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { readLimited } from "./response-body.js";
+import { createPinnedProxyAgent } from "./proxy.js";
+export { readLimited } from "./response-body.js";
 
 const UA =
   process.env.REM_USER_AGENT ||
@@ -50,7 +53,16 @@ export const publicLookup: LookupFunction = (hostname, options, callback) => {
   }).catch(err => callback(err instanceof Error ? err : new Error("DNS lookup failed"), "", 0));
 };
 
-const dispatcher = new Agent({ connect: { lookup: publicLookup }, headersTimeout: 20_000, bodyTimeout: 20_000 });
+// Proxy mode is explicit. Never silently trust a proxy's target DNS resolution.
+function networkDispatcher() {
+  const mode = process.env.REM_NETWORK_MODE ?? "direct";
+  if (mode === "direct") return new Agent({ connect: { lookup: publicLookup }, headersTimeout: 20_000, bodyTimeout: 20_000 });
+  if (mode !== "pinned-proxy") throw new Error("REM_NETWORK_MODE must be direct or pinned-proxy");
+  const proxy = process.env.HTTPS_PROXY || process.env.https_proxy;
+  if (!proxy) throw new Error("pinned-proxy mode requires the configured HTTPS_PROXY");
+  return createPinnedProxyAgent(proxy, assertPublicAddress);
+}
+const dispatcher = networkDispatcher();
 
 interface FetchOptions {
   timeoutMs?: number;
@@ -76,30 +88,6 @@ async function safeFetch(url: string, opts: FetchOptions, signal: AbortSignal): 
     current = next.href;
   }
   throw new Error("Too many redirects");
-}
-
-/** Limit decoded bytes while reading, including compressed responses. Never parse truncated JSON. */
-export async function readLimited(res: Pick<Response, "body">, maxBytes: number): Promise<string> {
-  if (!Number.isSafeInteger(maxBytes) || maxBytes < 1) throw new Error("Invalid response size limit");
-  if (!res.body) return "";
-  const reader = res.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      total += value.byteLength;
-      if (total > maxBytes) {
-        await reader.cancel();
-        throw new Error(`Response exceeds ${maxBytes} bytes`);
-      }
-      chunks.push(value);
-    }
-    return Buffer.concat(chunks, total).toString("utf8");
-  } finally {
-    reader.releaseLock();
-  }
 }
 
 export async function fetchText(url: string, opts: FetchOptions = {}): Promise<FetchedPage> {
