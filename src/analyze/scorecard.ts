@@ -103,11 +103,11 @@ export function scorecard(store: EvidenceStore): ChannelScore[] {
     const fams = (s.sections ?? []).filter((x: any) => x.programmatic).length;
     const total = s.totalUrls ?? 0;
     const strength = fams && total >= 1000 ? 3 : (s.blogPostsLast90d ?? 0) >= 6 || total >= 300 ? 2 : total >= 30 ? 1 : 0;
-    set("seo", strength ? "active" : "none", strength, `${total} indexed URLs, ${fams} programmatic families, ${s.blogPostsLast90d ?? 0} content updates/90d`, [sm, top]);
+    set("seo", total > 0 ? "active" : "unknown", strength, `${total} sitemap URLs (not confirmed indexed), ${fams} programmatic families, ${s.blogPostsLast90d ?? 0} content updates/90d`, [sm, top]);
   } else set("seo", "unknown", 0, "SEO source failed", []);
 
   const geo = store.find("seo", "AI-search stance");
-  if (geo) {
+  if (geo && !unknown("geo")) {
     const g = d(geo);
     const blocked = Object.entries(g.robots?.aiBots ?? {}).filter(([, v]) => v === "blocked").map(([k]) => k);
     set("geo", g.llmsTxt ? "active" : "none", g.llmsTxt ? 1 : 0, `${g.llmsTxt ? "llms.txt published" : "no llms.txt"}${blocked.length ? `; blocks ${blocked.join(", ")}` : ""}`, [geo]);
@@ -150,13 +150,13 @@ export function scorecard(store: EvidenceStore): ChannelScore[] {
   const ph = store.bySource("producthunt")[0];
   const best = Math.max(0, ...((d(hn) as any[]).map?.(x => x.points ?? 0) ?? [0]));
   const launched = best > 0 || ph || has("producthunt_badge");
-  set("launches", launched ? "active" : "none", best >= 300 ? 3 : best >= 100 || ph ? 2 : launched ? 1 : 0, [hn?.title, ph?.title].filter(Boolean).join("; ") || "No HN/PH footprint", [hn, ph]);
+  set("launches", launched ? "active" : "unknown", best >= 300 ? 3 : best >= 100 || ph ? 2 : launched ? 1 : 0, [hn?.title, ph?.title].filter(Boolean).join("; ") || "No launch activity confirmed in the checked sources", [hn, ph]);
 
   const app = store.bySource("appstore");
   if (app.length) {
     const ratings = Math.max(0, ...app.map(a => Number(d(a).ratingCount ?? 0)));
     set("app_store", "active", ratings >= 10_000 ? 3 : ratings >= 1_000 ? 2 : 1, app.map(a => a.title).join("; "), app);
-  } else set("app_store", "none", 0, "No App Store / Play app found", []);
+  } else set("app_store", "unknown", 0, "No app confirmed in checked sources", []);
 
   // Funnel motion -------------------------------------------------------------
   const email = tags.filter(t => t.category === "email");
@@ -164,14 +164,14 @@ export function scorecard(store: EvidenceStore): ChannelScore[] {
 
   const affPage = store.find("website", "Affiliate / partner program");
   const affTags = tags.filter(t => t.category === "affiliate");
-  set("affiliate", affPage || affTags.length ? "active" : "none", affPage && affTags.length ? 2 : affPage || affTags.length ? 1 : 0, [affPage && `program page${d(affPage).commission ? ` (${d(affPage).commission})` : ""}`, affTags.length && `tracked via ${affTags.map(t => t.name).join(", ")}`].filter(Boolean).join("; ") || "No affiliate program found", [affPage, stack]);
+  set("affiliate", affPage || affTags.length ? "active" : "unknown", affPage && affTags.length ? 2 : affPage || affTags.length ? 1 : 0, [affPage && `program page${d(affPage).commission ? ` (${d(affPage).commission})` : ""}`, affTags.length && `tracked via ${affTags.map(t => t.name).join(", ")}`].filter(Boolean).join("; ") || "No affiliate program found", [affPage, stack]);
 
   const demo = store.find("website", "Demo / contact-sales");
   const money = store.find("website", "Monetization");
   const salesTags = tags.filter(t => t.implies === "sales_led");
   const contact = Boolean(d(money).contactSales);
   const salesScore = (demo ? 1 : 0) + (salesTags.length ? 1 : 0) + (contact ? 1 : 0);
-  set("sales_led", salesScore ? "active" : "none", salesScore, [demo && "demo page", contact && "contact-sales tier", salesTags.length && `${salesTags.map(t => t.name).join(", ")}`].filter(Boolean).join("; ") || "Self-serve only", [demo, money, stack]);
+  set("sales_led", salesScore ? "active" : "unknown", salesScore, [demo && "demo page", contact && "contact-sales tier", salesTags.length && `${salesTags.map(t => t.name).join(", ")}`].filter(Boolean).join("; ") || "No sales-led signals confirmed in checked pages", [demo, money, stack]);
 
   return CHANNELS.map(c => out.get(c) ?? { channel: c, status: "unknown" as const, strength: 0 as const, signal: "Not checked", evidence: [] });
 }

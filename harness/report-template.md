@@ -16,7 +16,7 @@ A table: Channel | Status | Strength (0–3) | What we saw | Evidence. Use the p
 How the channels connect into a loop. Name the entry offer, the main CTA, the landing pages, and how traffic is converted and retained.
 
 ## Paid
-Per platform with evidence: volume, longevity of winners, formats (video/image/carousel/UGC), hooks and angles (quote the best 3–5), CTAs, landing pages, UTM naming, who is the target. Call out the longest-running ads explicitly: those are the proven winners.
+Per platform with evidence: volume, longevity of sampled ads, formats (video/image/carousel/UGC), hooks and angles (quote the best 3–5), CTAs, landing pages, UTM naming, who is the target. Call out the longest-running ads as longevity signals. Do not call them proven winners without direct performance evidence.
 
 ## Organic social
 Per platform: cadence, reach, formats, the hooks that win (quote top posts), whether organic winners are reused as ads.

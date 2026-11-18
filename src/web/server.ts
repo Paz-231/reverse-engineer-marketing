@@ -8,7 +8,7 @@ import { AREAS, reverseEngineer, VERSION, type Area, type EvidenceBundle } from 
 import { renderMarkdown } from "../report/markdown.js";
 import { validateReport } from "../report/validate.js";
 import { listRuns, loadReport, loadRun, saveReport, saveRun } from "../runs.js";
-import { PAGE } from "./page.js";
+import { PAGE, ASSETS } from "./page.js";
 
 type Event = { type: string; [k: string]: unknown };
 
@@ -119,6 +119,10 @@ export function startWeb(port: number): Promise<string> {
       const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
       const path = url.pathname;
 
+      if (req.method === "GET" && ASSETS.has(path)) {
+        res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "x-content-type-options": "nosniff", "cache-control": "no-store" });
+        return res.end(ASSETS.get(path));
+      }
       if (req.method === "GET" && path === "/") {
         res.writeHead(200, {
           "content-type": "text/html; charset=utf-8",
@@ -126,8 +130,8 @@ export function startWeb(port: number): Promise<string> {
           "x-content-type-options": "nosniff",
           "referrer-policy": "no-referrer",
           "x-frame-options": "DENY",
-          // Scripts only from us + the two pinned CDNs; no framing; API calls only to ourselves.
-          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src * data: blob:; media-src *; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+          // Scripts are local, locked dependencies; no inline execution or CDN scripts.
+          "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src * data: blob:; media-src *; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
         });
         return res.end(PAGE);
       }
@@ -149,7 +153,7 @@ export function startWeb(port: number): Promise<string> {
       if (req.method === "POST" && path === "/api/runs") {
         const body = await readBody(req);
         if (typeof body.url !== "string" || !body.url.trim()) return json(res, 400, { error: "url is required" });
-        if (!["claude-code", "codex", "anthropic-api", "none"].includes(body.engine)) return json(res, 400, { error: "bad engine" });
+        if (!["claude-code", "anthropic-api", "none"].includes(body.engine)) return json(res, 400, { error: "bad engine" });
         const job = await startJob(body);
         return json(res, 200, { jobId: job.id });
       }

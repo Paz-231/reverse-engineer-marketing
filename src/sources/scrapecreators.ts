@@ -1,4 +1,4 @@
-import { cached } from "../http.js";
+import { cached, fetchJson } from "../http.js";
 
 const BASE = "https://api.scrapecreators.com";
 
@@ -25,11 +25,10 @@ export class ScrapeCreators {
     return cached(`sc:${url}`, async () => {
       if (!this.can()) throw new Error(`Scrape Creators credit budget (${this.budget}) reached`);
       this.spent++;
-      const res = await fetch(url, { headers: { "x-api-key": this.apiKey }, signal: AbortSignal.timeout(45_000) });
-      const json = (await res.json().catch(() => null)) as any;
-      if (!res.ok || json?.success === false) {
-        const msg = json?.message || json?.error || `HTTP ${res.status}`;
-        throw new Error(`scrapecreators ${path}: ${msg}`);
+      const { status, json } = await fetchJson<any>(url, { headers: { "x-api-key": this.apiKey }, timeoutMs: 45_000, maxBytes: 10_000_000, redirects: "error" });
+      if (status < 200 || status >= 300 || !json || json.success === false) {
+        // Do not echo remote error bodies: they may reflect request credentials.
+        throw new Error(`scrapecreators ${path}: request failed (HTTP ${status})`);
       }
       return json as T;
     });

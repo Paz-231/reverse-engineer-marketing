@@ -54,6 +54,7 @@ export async function runSource(ctx: Ctx, source: string, fn: Collector): Promis
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     ctx.store.runs.push({ source, status: "error", reason, ms: Date.now() - t0 });
+    ctx.store.unknown({ channel: source, reason, manualCheck: ctx.target.url });
     ctx.log(`  ! ${source}: ${reason}`);
   }
 }

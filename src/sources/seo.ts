@@ -123,13 +123,25 @@ export async function collectSeo(ctx: Ctx): Promise<void> {
   if (!target.url) throw new Error("no website URL");
   const origin = new URL(target.url).origin;
 
-  const [robotsRes, llmsRes] = await Promise.allSettled([fetchText(`${origin}/robots.txt`, { timeoutMs: 10_000 }), fetchText(`${origin}/llms.txt`, { timeoutMs: 10_000 })]);
-  const robots = robotsRes.status === "fulfilled" && robotsRes.value.status === 200 && !/<html/i.test(robotsRes.value.body.slice(0, 500)) ? parseRobots(robotsRes.value.body) : null;
-  const llms = llmsRes.status === "fulfilled" && llmsRes.value.status === 200 && !/<html/i.test(llmsRes.value.body.slice(0, 500)) ? llmsRes.value.body : null;
-
-  // Sitemaps: robots-declared first, then the usual suspects; follow one index level.
+  // A failed/blocked fetch is unknown. Only an explicit 404/410 proves absence at this URL.
+  const readFile = async (path: string) => {
+    try {
+      const r = await fetchText(`${origin}/${path}`, { timeoutMs: 10_000 });
+      if (r.status === 404 || r.status === 410) return { state: "absent" as const, body: null };
+      if (r.status !== 200 || /<html/i.test(r.body.slice(0, 500))) throw new Error(`HTTP ${r.status} or unexpected HTML`);
+      return { state: "present" as const, body: r.body };
+    } catch (err) {
+      store.unknown({ channel: "geo", reason: `${path} not checked: ${err instanceof Error ? err.message : "fetch failed"}`, manualCheck: `${origin}/${path}` });
+      return { state: "unknown" as const, body: null };
+    }
+  };
+  const [robotsResult, llmsResult] = await Promise.all([readFile("robots.txt"), readFile("llms.txt")]);
+  const robots = robotsResult.body === null ? null : parseRobots(robotsResult.body);
+  const llms = llmsResult.body;
   const seen = new Set<string>();
   const urls: { loc: string; lastmod?: string }[] = [];
+  const readable: string[] = [];
+  const failures: string[] = [];
   const read = async (start: string[]) => {
     const queue = [...start];
     while (queue.length && seen.size < 25 && urls.length < 50_000) {
@@ -138,36 +150,40 @@ export async function collectSeo(ctx: Ctx): Promise<void> {
       seen.add(sm);
       try {
         const r = await fetchText(sm, { timeoutMs: 15_000, maxBytes: 20_000_000 });
-        if (r.status !== 200 || !/<(urlset|sitemapindex)/i.test(r.body.slice(0, 2000))) continue;
+        if (r.status === 404 || r.status === 410) continue;
+        if (r.status !== 200 || !/<(urlset|sitemapindex)/i.test(r.body.slice(0, 2000))) throw new Error(`HTTP ${r.status} or invalid sitemap`);
+        readable.push(sm);
         const parsed = parseSitemap(r.body);
         queue.push(...parsed.children.slice(0, 40));
-        urls.push(...parsed.urls);
-      } catch {
-        // try next
+        urls.push(...parsed.urls.slice(0, 50_000 - urls.length));
+      } catch (err) {
+        failures.push(`${sm}: ${err instanceof Error ? err.message : "fetch failed"}`);
       }
     }
+    if (queue.length) failures.push("Sitemap scan limit reached; coverage is partial");
   };
   await read(robots?.sitemaps ?? []);
   for (const fallback of ["sitemap.xml", "sitemap_index.xml", "sitemap-index.xml"]) {
     if (urls.length) break;
     await read([`${origin}/${fallback}`]);
   }
-
-  const analysis = analyzeSitemap(urls);
+  if (failures.length || !readable.length || robotsResult.state === "unknown") {
+    store.unknown({ channel: "seo", reason: failures.length ? `Sitemap coverage incomplete: ${failures.slice(0, 3).join("; ")}` : "No readable sitemap collected; site-wide SEO activity is unknown", manualCheck: `${origin}/sitemap.xml` });
+  }
+  if (readable.length) {
+    const analysis = analyzeSitemap(urls);
+    store.add({
+      source: "seo", kind: "derivation",
+      title: `Sitemap: ${analysis.totalUrls.toLocaleString("en-US")} URLs in collected sample`,
+      url: readable[0],
+      data: { ...analysis, partial: failures.length > 0 || robotsResult.state === "unknown", sitemapsRead: readable.slice(0, 10) },
+    });
+  }
   store.add({
-    source: "seo",
-    kind: "derivation",
-    title: urls.length ? `Sitemap: ${analysis.totalUrls.toLocaleString("en-US")} URLs, ${analysis.sections.filter(s => s.programmatic).length} programmatic page families, ${analysis.blogPostsLast90d} content updates in 90d` : "No readable sitemap found",
-    url: [...seen][0],
-    data: { ...analysis, sitemapsRead: [...seen].slice(0, 10) },
-  });
-
-  store.add({
-    source: "seo",
-    kind: "observation",
-    title: `AI-search stance: ${llms ? "has llms.txt" : "no llms.txt"}; ${robots ? Object.entries(robots.aiBots).filter(([, v]) => v === "blocked").map(([k]) => k).join(", ") || "no AI bots blocked" : "robots.txt missing"}`,
+    source: "seo", kind: "observation",
+    title: `AI-search stance: llms.txt ${llmsResult.state}; robots.txt ${robotsResult.state}`,
     url: `${origin}/robots.txt`,
-    data: { robots, llmsTxt: llms ? llms.slice(0, 1500) : null },
+    data: { robots, llmsTxt: llms === null ? null : llms.slice(0, 1500), robotsStatus: robotsResult.state, llmsStatus: llmsResult.state },
   });
 
   if (ctx.sc && target.domain && ctx.sc.can()) {

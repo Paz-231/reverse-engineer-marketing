@@ -8,7 +8,11 @@ import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 
 const NAME = "reverse-engineer-marketing";
-const SERVER = ["npx", "-y", "reverse-engineer-marketing", "mcp"];
+export function serverCommand(): string[] {
+  const entry = join(dirname(fileURLToPath(import.meta.url)), "cli.js");
+  if (!existsSync(entry)) throw new Error("Build the reviewed checkout first: npm run build");
+  return [process.execPath, entry, "mcp"];
+}
 
 interface Step {
   client: string;
@@ -25,6 +29,7 @@ function skillSource(): string {
 }
 
 export function plan(clients: string[]): Step[] {
+  const SERVER = serverCommand();
   const steps: Step[] = [];
   const want = (c: string) => clients.includes("all") || clients.includes(c);
   if (want("claude_code")) {

@@ -1,11 +1,13 @@
-// Report validator: the eval gate for the harness. A report passes when every
-// citation resolves, the required sections exist, and the playbook is grounded.
+// Structural lint only. Existing citations do not prove the claims they accompany.
 import type { EvidenceBundle } from "../index.js";
 
 const REQUIRED = ["TL;DR", "Channel scorecard", "The engine", "Paid", "Organic social", "SEO", "Founders", "Reddit", "Funnel", "Steal this playbook", "Unknowns"];
 
 export interface ValidationResult {
   ok: boolean;
+  scope: "structure-only";
+  factsVerified: false;
+  warning: string;
   score: number;
   checks: { name: string; ok: boolean; detail: string }[];
 }
@@ -29,13 +31,13 @@ export function validateReport(markdown: string, bundle: Pick<EvidenceBundle, "e
   const checks = [
     { name: "citations resolve", ok: dangling.length === 0, detail: dangling.length ? `unknown ids: ${dangling.join(", ")}` : `${cited.length} citations` },
     { name: "required sections", ok: missing.length === 0, detail: missing.length ? `missing: ${missing.join(", ")}` : "all present" },
-    { name: "playbook grounded", ok: steps.length >= 5 && groundedSteps.length >= Math.ceil(steps.length * 0.8), detail: `${groundedSteps.length}/${steps.length} steps cite evidence` },
-    { name: "tl;dr grounded", ok: tldr.length >= 3 && groundedTldr.length === tldr.length, detail: `${groundedTldr.length}/${tldr.length} bullets cite evidence` },
-    { name: "no invented spend", ok: money.length === 0, detail: money.length ? `spend figures: ${money.join("; ")}` : "none" },
-    { name: "unknowns reported", ok: bundle.unknowns.length === 0 || /unknowns/i.test(headings.join(" ")), detail: `${bundle.unknowns.length} unknowns in bundle` },
+    { name: "playbook citation coverage", ok: steps.length >= 5 && groundedSteps.length >= Math.ceil(steps.length * 0.8), detail: `${groundedSteps.length}/${steps.length} steps cite evidence` },
+    { name: "tl;dr citation coverage", ok: tldr.length >= 3 && groundedTldr.length === tldr.length, detail: `${groundedTldr.length}/${tldr.length} bullets cite evidence` },
+    { name: "spend-pattern screen", ok: money.length === 0, detail: money.length ? `spend figures require source review: ${money.join("; ")}` : "No matching dollar-spend pattern; not a factual verification" },
+    { name: "unknowns reported", ok: bundle.unknowns.length === 0 || sectionBody(markdown, "unknowns").trim().length > 0, detail: `${bundle.unknowns.length} unknowns in bundle` },
   ];
   const passed = checks.filter(c => c.ok).length;
-  return { ok: passed === checks.length, score: Math.round((passed / checks.length) * 100) / 100, checks };
+  return { ok: passed === checks.length, scope: "structure-only", factsVerified: false, warning: "Checks structure and citation IDs only. Review each claim against its evidence; facts and performance are not verified.", score: Math.round((passed / checks.length) * 100) / 100, checks };
 }
 
 function sectionBody(md: string, heading: string): string {

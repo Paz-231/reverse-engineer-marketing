@@ -69,7 +69,7 @@ async function metaAds(ctx: Ctx, brand: string, manual: string): Promise<void> {
       return;
     }
     // status=ALL: paused/finished campaigns are strategy too (the default is ACTIVE only).
-    // Three samples: most-shown ever (the winners), newest, and what's live now.
+    // Three samples: most-shown ever (longevity signals), newest, and what's live now.
     const [winners, all, activeOnly] = await Promise.all([
       sc.get<any>("/v1/facebook/adLibrary/company/ads", { pageId: page.page_id, status: "ALL", sort_by: "total_impressions" }).catch(() => null),
       sc.get<any>("/v1/facebook/adLibrary/company/ads", { pageId: page.page_id, status: "ALL" }),
@@ -120,7 +120,7 @@ async function metaAds(ctx: Ctx, brand: string, manual: string): Promise<void> {
         landingPages: tally(ads.flatMap(links).map(landingKey).filter(Boolean) as string[]),
         utmCampaigns: tally(ads.flatMap(links).map(u => utm(u, "utm_campaign")).filter(Boolean) as string[]),
         appStoreLinks: appStoreLinkStats(ads.flatMap(links)),
-        // Ads that ran longest (active or paused) are the proven winners.
+        // Ads that ran longest (active or paused) show longevity, not proven performance.
         longestRunning: [...ads].sort((x, y) => ranDays(y) - ranDays(x)).slice(0, 8).map(view),
         longestRunningActive: ads.filter(a => a.is_active).sort((x, y) => ranDays(y) - ranDays(x)).slice(0, 5).map(view),
         mostShown: ((winners?.results ?? []) as any[]).slice(0, 8).map(view),
@@ -145,7 +145,7 @@ async function metaAds(ctx: Ctx, brand: string, manual: string): Promise<void> {
           date: v.started,
           status: a.is_active ? ("active" as const) : ("inactive" as const),
           metrics: { runningDays: v.runningDays, variants: v.variants },
-          tags: [topIds.has(a.ad_archive_id) ? "top by impressions" : "", v.runningDays >= 60 ? "proven (60d+)" : "", v.format, v.cta].filter(Boolean) as string[],
+          tags: [topIds.has(a.ad_archive_id) ? "top by impressions" : "", v.runningDays >= 60 ? "long-running (60d+)" : "", v.format, v.cta].filter(Boolean) as string[],
         };
       }),
       e.id,
