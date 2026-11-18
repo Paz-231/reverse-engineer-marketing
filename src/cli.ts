@@ -21,7 +21,7 @@ Reverse engineer any company's marketing from one link.
 
 Usage
   rem <url>                 website, App Store or Google Play link
-  rem web                   open the local web app (uses your Claude Code / Codex plan)
+  rem web                   open the local web app (Claude Code, Anthropic API or evidence only)
   rem mcp                   run the MCP server (stdio) for Claude Code, Codex, Cursor…
   rem doctor                show which sources your keys unlock
   rem setup                 connect REM to Claude Code / Codex (shows the plan, asks first)
@@ -98,7 +98,7 @@ async function main(argv: string[]): Promise<number> {
         const res = await synthesize(bundle, { model: args.model });
         narrative = res.markdown;
         const v = validateReport(narrative, bundle);
-        log(`✓ report by ${res.model} (${res.usage.output} output tokens) · validation ${Math.round(v.score * 100)}%${v.ok ? "" : ` — ${v.checks.filter(c => !c.ok).map(c => `${c.name}: ${c.detail}`).join("; ")}`}`);
+        log(`✓ report by ${res.model} (${res.usage.output} output tokens) · structure check ${Math.round(v.score * 100)}% (facts require review)${v.ok ? "" : ` — ${v.checks.filter(c => !c.ok).map(c => `${c.name}: ${c.detail}`).join("; ")}`}`);
       } catch (err) {
         log(`! synthesis failed: ${err instanceof Error ? err.message : err} — writing evidence report instead`);
       }

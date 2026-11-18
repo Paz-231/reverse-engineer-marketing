@@ -9,6 +9,7 @@ type Num = number | null;
 function metric(b: EvidenceBundle, source: string, titleStart: string | null, key: string): Num {
   const e = b.evidence.find(x => x.source === source && (!titleStart || x.title.startsWith(titleStart)));
   const v = (e?.data as any)?.[key];
+  if (v == null || v === "") return null;
   const n = typeof v === "string" ? Number(v.replace(/,/g, "")) : Number(v);
   return Number.isFinite(n) ? n : null;
 }

@@ -6,7 +6,7 @@
 
 **Paid ads · organic social · SEO & AI search · founders · funnel · positioning history, with the evidence for every claim.**
 
-<code>npx reverse-engineer-marketing notion.so</code>
+<code>node dist/cli.js notion.so</code>
 
 [Quick start](#quick-start) · [Web app](#web-app-use-your-claude-code-or-codex-plan) · [What it finds](#what-it-finds) · [Use it from your agent (MCP)](#use-it-from-your-agent-mcp) · [Example report](examples/calai.app.md) · [How it works](#how-it-works)
 
@@ -14,7 +14,7 @@
 
 ---
 
-Nobody shares their growth alpha anymore. But most of it is public if you know where to look: ad libraries show which ads have been running for months (the winners), pixels show which platforms they buy, sitemaps show programmatic SEO, Wayback shows every repositioning, and founders post their playbook in public.
+Nobody shares their growth alpha anymore. But most of it is public if you know where to look: ad libraries show which ads have been running for months (longevity signals), pixels show which platforms they buy, sitemaps show programmatic SEO, Wayback shows every repositioning, and founders post their playbook in public.
 
 REM collects all of it from one link and turns it into a report: what the company's growth engine is, how the channels connect, and a step-by-step playbook to copy it. Every fact cites the evidence it came from, and everything REM couldn't see is listed as unknown, with a link to check it yourself.
 
@@ -25,16 +25,34 @@ Inspired by [REA (Reverse Engineer Anything)](https://github.com/morluto/rea), b
 
 ## Quick start
 
+This fork must be built from the reviewed commit, not an unversioned npm package:
+
+```bash
+git clone https://github.com/Paz-231/reverse-engineer-marketing.git
+cd reverse-engineer-marketing
+# Check out the approved commit before building.
+npm ci --ignore-scripts
+npm run typecheck && npm test && npm run eval && npm run build
+npm prune --omit=dev --ignore-scripts
+node dist/cli.js setup --dry-run
+node dist/cli.js setup --yes
+```
+
+Keep this checkout in a permanent location on your agent host. A temporary ChatGPT execution workspace is not a permanent host. MCP via stdio is a local client integration, not a hosted ChatGPT connector. Direct outbound DNS/HTTPS must work; REM deliberately does not bypass its DNS policy through inherited proxy variables.
+
+The build/test toolchain currently has a known picomatch ReDoS advisory. It is absent after pruning development dependencies. Do not run the test toolchain on attacker-supplied glob patterns. Production dependency audit is checked separately. See docs/SECURITY_FIXES.md for validation and remaining limitations.
+
+
 Try it with zero setup, no keys: a recorded Cal AI teardown opens in the web app.
 
 ```bash
-npx reverse-engineer-marketing demo
+node dist/cli.js demo
 ```
 
 Then run it on any company:
 
 ```bash
-npx reverse-engineer-marketing linear.app
+node dist/cli.js linear.app
 ```
 
 That works with **no API keys**: website, tracking pixels (including pixels hidden inside Google Tag Manager containers), SEO/sitemaps, AI-crawler stance, Wayback positioning history, App Store/Google Play and Hacker News.
@@ -44,7 +62,7 @@ Add keys to unlock the rest:
 ```bash
 export SCRAPECREATORS_API_KEY=...   # ad libraries, social stats, founders, Reddit (~25–50 credits per run)
 export ANTHROPIC_API_KEY=...        # the written strategy report (Claude)
-npx reverse-engineer-marketing calai.app
+node dist/cli.js calai.app
 ```
 
 Output goes to `./rem-reports/<domain>-<date>/`: `report.md` plus `evidence.json` (the raw evidence bundle).
@@ -53,7 +71,7 @@ It also accepts App Store and Google Play links: `rem https://apps.apple.com/us/
 
 ```
 rem <url> [--no-ai] [--json] [--only paid,social,seo] [--handle tiktok=name] [--out dir]
-rem web              # local web app (Claude Code / Codex subscription)
+rem web              # local app (Claude Code / Anthropic API / evidence only)
 rem demo             # recorded Cal AI teardown in the web app, no keys
 rem diff <domain>    # what changed since the last run: new/killed ads, growth, repositioning
 rem setup            # connect REM to Claude Code / Codex (shows the plan, asks before changing anything)
@@ -61,30 +79,30 @@ rem doctor           # which sources your keys unlock
 rem mcp              # run the MCP server
 ```
 
-## Web app: use your Claude Code or Codex plan
+## Web app: Claude Code, Anthropic API or evidence only
 
 ```bash
-npx reverse-engineer-marketing web
+node dist/cli.js web
 ```
 
-Opens a local web app at `http://localhost:4321`. Paste a link, pick who writes the report, and watch the evidence come in and the playbook stream out. Every `E12` citation opens the raw evidence behind it.
+Opens a local web app at `http://localhost:4321`. Paste a link, pick an available report writer, and watch the evidence come in and the playbook stream out. Every `E12` citation opens the raw evidence behind it.
 
 The **Posts & ads** tab is a review library of everything collected: Meta ads (active *and* paused, with creatives, inline video, run length, variants, top-by-impressions), Google and LinkedIn ads, TikTok and Instagram videos, YouTube, X and LinkedIn posts (company and founders), and Reddit threads and brand/founder replies. Filter by platform, sort by top / newest / longest running, open any original. The rail shows the brand logo and the founders with photos, roles, LinkedIn/X audience and a confidence badge.
 
 | Report writer | How it runs | Cost |
 |---|---|---|
 | **Claude Code** | your installed `claude` CLI, headless, no tools | your Claude subscription |
-| **Codex** | your installed `codex exec`, read-only sandbox | your ChatGPT subscription |
+| **Codex** | use REM through MCP in your agent; nested web writer disabled | your agent plan |
 | Anthropic API | `ANTHROPIC_API_KEY` | per token |
 | Evidence only | no AI | free |
 
-Subscription engines run the CLI you're already logged into. REM strips `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` from their environment so your plan is used, not an API key, and runs them in a scratch folder with your MCP servers and hooks disabled. The server listens on `127.0.0.1` only and rejects other hosts and origins. Add your Scrape Creators key from the top-right pill; it's saved to `~/.config/reverse-engineer-marketing/config.json` (mode 600). Past runs are listed on the home page.
+Claude Code runs without tools in a private temporary directory with a minimal environment. The nested Codex writer is disabled: read-only shell access does not isolate secrets. Codex can still use REM through MCP and write the report in its own session. The local web app binds only to 127.0.0.1; do not expose it on a public host or reverse proxy. See SECURITY.md for trust boundaries.
 
 ## What it finds
 
 | Area | What REM pulls | Needs a key? |
 |---|---|---|
-| **Paid: Meta** | All ads incl. paused campaigns, active count, most-shown ads, ads launched in the last 30 days, **longest-running active ads (the proven winners)** with hooks, formats, CTAs, landing pages, UTM campaign names, variant counts | Scrape Creators |
+| **Paid: Meta** | All ads incl. paused campaigns, active count, most-shown ads, ads launched in the last 30 days, **longest-running active ads (longevity signals)** with hooks, formats, CTAs, landing pages, UTM campaign names, variant counts | Scrape Creators |
 | **Paid: Google** | Ads pointing at the domain, formats, recency, and **other advertisers bidding on the brand** (affiliates/resellers) | Scrape Creators |
 | **Paid: LinkedIn** | Ads by the company, ad types, headlines, CTAs | Scrape Creators |
 | **Paid: Apple Search Ads** | From Apple's public Ad Repository (EU): App Store ads over the last year, how many still serve, placements, formats, the message each ad shows, markets, audience targeting, and **copycat apps advertising under the same name** | Free |
@@ -118,33 +136,17 @@ REM is an MCP server, so Claude Code, Codex, Cursor, or any MCP client can run i
 One command, with a plan you approve first (it backs up anything it replaces):
 
 ```bash
-npx reverse-engineer-marketing setup        # detects Claude Code / Codex, shows the plan, asks
-npx reverse-engineer-marketing setup --dry-run
+node dist/cli.js setup        # detects Claude Code / Codex, shows the plan, asks
+node dist/cli.js setup --dry-run
 ```
 
-Or by hand:
+Or register the exact built checkout manually (replace the paths with your actual Node executable and reviewed checkout):
 
 ```bash
-# Claude Code
-claude mcp add reverse-engineer-marketing -e SCRAPECREATORS_API_KEY=... -- npx -y reverse-engineer-marketing mcp
-
-# Codex
-codex mcp add reverse-engineer-marketing --env SCRAPECREATORS_API_KEY=... -- npx -y reverse-engineer-marketing mcp
+codex mcp add reverse-engineer-marketing -- /absolute/path/to/node /absolute/path/to/reverse-engineer-marketing/dist/cli.js mcp
 ```
 
-Any other client:
-
-```json
-{
-  "mcpServers": {
-    "reverse-engineer-marketing": {
-      "command": "npx",
-      "args": ["-y", "reverse-engineer-marketing", "mcp"],
-      "env": { "SCRAPECREATORS_API_KEY": "..." }
-    }
-  }
-}
-```
+Do not put API keys in command arguments. Store them in your client's secret mechanism or REM's local settings (file mode 600). Other MCP clients can use the same absolute executable and arguments. Moving this checkout requires updating the registration.
 
 Then ask:
 
@@ -157,7 +159,7 @@ Then ask:
 | `get_playbook` | The analysis method: role, evidence rules, report template, lessons, and per-channel playbooks |
 | `get_content` | The actual ads, videos and posts (media URLs, run length, live/paused) to quote or show |
 | `compare_runs` | What changed between two runs of the same company |
-| `validate_report` | Checks the agent's report: citations resolve, sections exist, playbook grounded, no invented spend |
+| `validate_report` | Structural lint: citation IDs, sections and citation coverage. Does not verify facts or all invented numbers. |
 | `write_report` | Optional server-side report (needs `ANTHROPIC_API_KEY` in the server env) |
 
 ### Guided workflows

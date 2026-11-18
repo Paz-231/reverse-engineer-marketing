@@ -2,9 +2,9 @@
 
 Format: **cue** → lesson. (Evidence that taught us.) Add lessons when an eval or a human review shows a recurring miss.
 
-- **Ad active 60+ days** → treat as a proven winner; nobody keeps paying for a loser. Lead the Paid section with these. (Long-running Meta ads correlate with scaled spend.)
+- **Ad active 60+ days** → report observed longevity. It may suggest continued investment, but does not prove profitability, conversions or scaled spend. Label any performance hypothesis as an inference.
 - **Many new ads in the last 30 days + many variants (collation_count)** → active creative testing; the company is scaling Meta with a creative-volume strategy. Report launch rate.
-- **Same hook in organic top posts and in ads** → "organic-first testing" loop: they post organically, then put spend behind winners. Call it out; it's the most copyable play.
+- **Same hook in organic top posts and in ads** → possible reuse of creative across channels. Without dates and performance data, testing order and profitability are unknown; label the loop as a hypothesis.
 - **Meta Pixel installed but zero ads in the library** → past or paused spend, or ads run from another page/brand. Say so; don't claim active spend.
 - **Google ads attributed to a different advertiser name** → resellers, affiliates or an agency entity bid on the brand. Flag it.
 - **Programmatic page family (hundreds of /x-vs-y, /templates/, /integrations/ pages)** → SEO is a core engine even if the blog is quiet. Describe the template.
@@ -21,3 +21,6 @@ Format: **cue** → lesson. (Evidence that taught us.) Add lessons when an eval 
 - **Reddit threads ranking on Google for the brand** → Reddit is part of their SEO surface (and AI-search citations); note whether those threads are positive or negative.
 - **Thousands of Apple Search Ads across every EU market with one subtitle** → App Store search is a scaled, settled channel; the App Store listing (not the website) is the landing page. Pair it with Meta ads → App Store links to describe the full install machine.
 - **Same-name apps advertising on the App Store** → copycats drafting off the brand's demand; a sign the brand is big enough to be worth copying. Never claim they bid on the brand keyword (not public).
+
+- **Network error, blocked request or timeout** → record Unknown and its cause, never absence.
+- **Citation checker passes** → still inspect claim-to-evidence support. A valid ID can accompany an unsupported statement.

@@ -141,7 +141,7 @@ describe("scorecard + validator", () => {
     const v = validateReport(md, bundle);
     expect(v.ok).toBe(false);
     expect(v.checks.find(c => c.name === "citations resolve")?.detail).toContain("E9");
-    expect(v.checks.find(c => c.name === "no invented spend")?.ok).toBe(false);
+    expect(v.checks.find(c => c.name === "spend-pattern screen")?.ok).toBe(false);
   });
 });
 

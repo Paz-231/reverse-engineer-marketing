@@ -23,14 +23,14 @@
     "LICENSE"
   ],
   "engines": {
-    "node": ">=22"
+    "node": ">=22.19.0"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && chmod +x dist/cli.js",
-    "dev": "tsx src/cli.ts",
+    "dev": "node --import tsx src/cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "eval": "tsx evals/run.ts",
+    "eval": "node --import tsx evals/run.ts",
     "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "keywords": [
@@ -48,12 +48,16 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dansugc/reverse-engineer-marketing.git"
+    "url": "git+https://github.com/Paz-231/reverse-engineer-marketing.git"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
     "@modelcontextprotocol/sdk": "^1.32.1",
+    "dompurify": "3.4.18",
+    "ipaddr.js": "2.5.0",
+    "marked": "18.2.1",
     "node-html-parser": "^9.0.4",
+    "undici": "8.12.4",
     "zod": "^4.6.7"
   },
   "devDependencies": {

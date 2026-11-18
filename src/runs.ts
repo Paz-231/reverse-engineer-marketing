@@ -7,7 +7,10 @@ import type { EvidenceBundle } from "./index.js";
 export const DATA_DIR = process.env.REM_CACHE_DIR || join(homedir(), ".cache", "reverse-engineer-marketing");
 export const RUNS_DIR = join(DATA_DIR, "runs");
 
-const safe = (id: string) => id.replace(/[^a-z0-9._-]/gi, "");
+const safe = (id: string) => {
+  if (!/^[a-z0-9][a-z0-9._-]{0,200}$/i.test(id)) throw new Error("Invalid run id");
+  return id;
+};
 
 export function runId(bundle: EvidenceBundle): string {
   return `${(bundle.target.domain ?? bundle.brand).replace(/[^a-z0-9.-]/gi, "_")}-${bundle.generatedAt.replace(/[-:T]/g, "").slice(0, 12)}`;
